@@ -22,17 +22,20 @@
 
 ### Automated Setup (Recommended)
 
-Run the setup script to automatically configure cargo:
+Run the setup script to install Rust (if needed) and configure cargo:
 
 ```bash
-# Download and run setup script
-curl -sSL https://raw.githubusercontent.com/osobh/kellnr/main/docker/setup-cargo.sh | bash
+# One-liner setup (replace YOUR_TOKEN with your actual token)
+curl -sSL https://raw.githubusercontent.com/osobh/kellnr/main/docker/setup-cargo.sh | bash -s -- -t YOUR_TOKEN
 
 # Or if you have the repo cloned:
-./docker/setup-cargo.sh
+./docker/setup-cargo.sh -t YOUR_TOKEN
 ```
 
-The script will prompt for your API token and configure everything automatically.
+The script will:
+1. Install Rust 1.92.0 if not already installed
+2. Configure cargo to use Kellnr as the crates.io proxy
+3. Set up authentication for private crates
 
 ### Manual Configuration
 
