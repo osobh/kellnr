@@ -49,3 +49,6 @@ tests/**/logs/
 tests/**/data/
 tests/**/kdata/
 .certs/
+
+# Docker environment files (contain secrets)
+docker/.env

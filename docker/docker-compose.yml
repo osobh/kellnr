@@ -1,0 +1,91 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: kellnr-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kellnr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-kellnr}
+    volumes:
+      - /mnt/kellnr-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kellnr -d kellnr"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kellnr-network
+
+  kellnr:
+    image: ghcr.io/kellnr/kellnr:5
+    container_name: kellnr
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Origin settings
+      KELLNR_ORIGIN__HOSTNAME: crates.rustystack.io
+      KELLNR_ORIGIN__PORT: "80"
+      KELLNR_ORIGIN__PROTOCOL: http
+      # PostgreSQL settings
+      KELLNR_POSTGRESQL__ENABLED: "true"
+      KELLNR_POSTGRESQL__ADDRESS: postgres
+      KELLNR_POSTGRESQL__PORT: "5432"
+      KELLNR_POSTGRESQL__DB: ${POSTGRES_DB:-kellnr}
+      KELLNR_POSTGRESQL__USER: ${POSTGRES_USER:-kellnr}
+      KELLNR_POSTGRESQL__PWD: ${POSTGRES_PASSWORD}
+      # Admin credentials (first start only)
+      KELLNR_SETUP__ADMIN_PWD: ${KELLNR_ADMIN_PWD}
+      KELLNR_SETUP__ADMIN_TOKEN: ${KELLNR_ADMIN_TOKEN}
+      # Crates.io proxy cache
+      KELLNR_PROXY__ENABLED: "true"
+      KELLNR_PROXY__NUM_THREADS: "10"
+      # Rustdoc generation
+      KELLNR_DOCS__ENABLED: "true"
+      KELLNR_DOCS__MAX_SIZE: "100"
+      # Logging
+      KELLNR_LOG__LEVEL: "info"
+      KELLNR_LOG__FORMAT: "json"
+    volumes:
+      - /mnt/kellnr-data/kellnr:/opt/kdata
+    networks:
+      - kellnr-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: kellnr-nginx
+    restart: unless-stopped
+    depends_on:
+      - kellnr
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - kellnr-network
+
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: kellnr-postgres-backup
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-kellnr}
+      POSTGRES_USER: ${POSTGRES_USER:-kellnr}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+    volumes:
+      - /mnt/kellnr-data/backups:/backups
+    networks:
+      - kellnr-network
+
+networks:
+  kellnr-network:
+    driver: bridge
