@@ -18,31 +18,86 @@
 
 ---
 
-## Cargo Configuration
+## Developer Setup
+
+### Automated Setup (Recommended)
+
+Run the setup script to automatically configure cargo:
+
+```bash
+# Download and run setup script
+curl -sSL https://raw.githubusercontent.com/osobh/kellnr/main/docker/setup-cargo.sh | bash
+
+# Or if you have the repo cloned:
+./docker/setup-cargo.sh
+```
+
+The script will prompt for your API token and configure everything automatically.
+
+### Manual Configuration
 
 Add to `~/.cargo/config.toml` on developer machines:
 
 ```toml
+# ============================================
+# Kellnr Private Registry Configuration
+# ============================================
+
 # Private crate registry
 [registries.kellnr]
 index = "sparse+http://crates.rustystack.io/api/v1/crates/"
 credential-provider = ["cargo:token"]
-token = "c3dcbTHTn3yoHUbMoJ2Bi201f2hmtnH3"
+token = "YOUR_API_TOKEN_HERE"
 
-# Crates.io proxy (optional - use Kellnr as crates.io cache)
-[registries.kellnr-cratesio]
-index = "sparse+http://crates.rustystack.io/api/v1/cratesio/"
+# Replace crates.io with Kellnr proxy
+# All crates.io downloads are cached through Kellnr
+[source.crates-io]
+replace-with = "kellnr-proxy"
+
+[source.kellnr-proxy]
+registry = "sparse+http://crates.rustystack.io/api/v1/cratesio/"
 ```
 
-### Publishing a crate to Kellnr:
+### Getting Your API Token
+
+1. Log in to http://crates.rustystack.io with your credentials
+2. Go to Settings > Tokens
+3. Create a new token or use the admin token (for admins only)
+
+### Usage Examples
+
+**Pull any crate (automatically proxied through Kellnr):**
+```bash
+cargo build  # All crates.io dependencies are cached locally
+```
+
+**Use a private crate in Cargo.toml:**
+```toml
+[dependencies]
+my_private_crate = { version = "1.0", registry = "kellnr" }
+```
+
+**Publish a private crate:**
 ```bash
 cargo publish --registry kellnr
 ```
 
-### Using a crate from Kellnr in Cargo.toml:
+**Or set default publish target in Cargo.toml:**
 ```toml
-[dependencies]
-my_private_crate = { version = "1.0", registry = "kellnr" }
+[package]
+name = "my_crate"
+version = "0.1.0"
+publish = ["kellnr"]
+```
+
+### Verify Setup
+
+```bash
+# Test crates.io proxy
+cargo search serde
+
+# Test private registry access
+cargo search --registry kellnr
 ```
 
 ---
@@ -133,6 +188,7 @@ UUID=26b84b58-a918-4f48-871b-d401911dd48b /mnt/kellnr-data xfs defaults 0 2
 ├── docker-compose.yml    # Main compose file
 ├── .env                  # Secrets (DO NOT COMMIT)
 ├── .env.example          # Template for .env
+├── setup-cargo.sh        # Developer setup script
 ├── nginx/
 │   └── nginx.conf        # Nginx reverse proxy config
 └── RECOVERY.md           # This file
